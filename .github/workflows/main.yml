@@ -1,4 +1,4 @@
-name: Video + Audio Stream (No Copyright Logic)
+name: Video + Audio Stream (Loop & AI Bot)
 
 on:
   workflow_dispatch:
@@ -14,11 +14,17 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install FFmpeg & Libs
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install FFmpeg & AI Libraries
         run: |
           sudo apt update
           sudo apt install -y ffmpeg
-          pip install google-generativeai pytchat requests
+          # Yahan requirement wala text direct install ho raha hai
+          pip install google-generativeai==0.8.3 pytchat==0.5.5 requests
 
       - name: Start Live Stream and AI Bot
         env:
@@ -27,15 +33,12 @@ jobs:
           GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
           YT_API_KEY: ${{ secrets.YT_API_KEY }}
         run: |
-          # 1. AI Bot ko background mein start karein
-          python ai_bot.py & 
+          echo "AI Bot starting in background..."
+          # nohup se bot "End" nahi hoga aur background mein chalta rahega
+          nohup python ai_bot.py > bot_logs.txt 2>&1 & 
           
-          echo "Streaming starting with Copyright Protection Filters..."
-          
-          # 2. FFmpeg with Audio Pitch & Speed filters
-          # Filter explanation: 
-          # atempo=1.02 (2% fast kiya hai taaki slow na lage)
-          # asetrate=44100*1.02 (Pitch halki si change ki hai)
+          echo "Streaming starting with Copyright Protection..."
+          # FFmpeg with Pitch/Speed protection
           ffmpeg -re \
             -stream_loop -1 -i video.mp4 \
             -stream_loop -1 -i audio.mp3 \
@@ -53,7 +56,6 @@ jobs:
             "$STREAM_URL"
 
           echo "FFmpeg finished. Triggering next workflow..."
-          
           curl -X POST \
             -H "Authorization: token $GH_TOKEN" \
             -H "Accept: application/vnd.github.v3+json" \

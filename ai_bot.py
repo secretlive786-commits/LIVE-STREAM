@@ -10,7 +10,7 @@ YT_API_KEY = os.environ.get("YT_API_KEY")
 
 # APNI CHANNEL ID YAHAN DALO (Example: UCxxxxxxxxxxxxxxx)
 # Ye aapko YouTube Studio -> Settings -> Advanced mein milegi
-CHANNEL_ID = "EUiBEBPJFpS04Yj4" 
+CHANNEL_ID = "UCSdDJgyrqtcSi3GeqLGb6GA" 
 
 # Gemini AI Setup
 genai.configure(api_key=GEMINI_KEY)

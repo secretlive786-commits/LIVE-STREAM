@@ -1,4 +1,4 @@
-name: Video + Audio Stream (Loop & Auto-Restart)
+name: Video + Audio Stream (No Copyright Logic)
 
 on:
   workflow_dispatch:
@@ -14,28 +14,33 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Install FFmpeg
+      - name: Install FFmpeg & Libs
         run: |
           sudo apt update
           sudo apt install -y ffmpeg
+          pip install google-generativeai pytchat requests
 
-      - name: Check Files
-        run: |
-          # Check karein ki video aur audio files folder mein hain ya nahi
-          if [ ! -f "video.mp4" ]; then echo "video.mp4 missing!" && exit 1; fi
-          if [ ! -f "audio.mp3" ]; then echo "audio.mp3 missing!" && exit 1; fi
-
-      - name: Start Live Stream
+      - name: Start Live Stream and AI Bot
         env:
           STREAM_URL: "rtmp://a.rtmp.youtube.com/live2/k4bv-wakv-50ad-uas6-8rtr"
           GH_TOKEN: ${{ secrets.GH_PAT }}
+          GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
+          YT_API_KEY: ${{ secrets.YT_API_KEY }}
         run: |
-          echo "Video stream starting with background audio for 5 hours and 50 minutes..."
+          # 1. AI Bot ko background mein start karein
+          python ai_bot.py & 
           
+          echo "Streaming starting with Copyright Protection Filters..."
+          
+          # 2. FFmpeg with Audio Pitch & Speed filters
+          # Filter explanation: 
+          # atempo=1.02 (2% fast kiya hai taaki slow na lage)
+          # asetrate=44100*1.02 (Pitch halki si change ki hai)
           ffmpeg -re \
             -stream_loop -1 -i video.mp4 \
             -stream_loop -1 -i audio.mp3 \
-            -map 0:v:0 -map 1:a:0 \
+            -filter_complex "[1:a]atempo=1.02,asetrate=44100*1.02,aresample=44100[aout]" \
+            -map 0:v:0 -map "[aout]" \
             -c:v libx264 \
             -preset veryfast \
             -pix_fmt yuv420p \
@@ -54,5 +59,3 @@ jobs:
             -H "Accept: application/vnd.github.v3+json" \
             https://api.github.com/repos/${{ github.repository }}/dispatches \
             -d '{"event_type": "restart_stream"}'
-
-            
